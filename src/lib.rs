@@ -49,12 +49,12 @@
 //! ```
 
 mod error;
-mod varint;
 mod index;
-mod reader;
 mod iterator;
+mod reader;
+mod varint;
 
 pub use error::BlkReaderError;
 pub use index::{BlockIndexEntry, IndexReader};
-pub use reader::BlkReader;
 pub use iterator::{BlkReaderConfig, BlockIterator, RawBlock};
+pub use reader::BlkReader;

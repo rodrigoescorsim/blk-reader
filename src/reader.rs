@@ -80,7 +80,11 @@ impl BlkReader {
     ///
     /// Returns [`BlkReaderError`] if the file is missing, the magic bytes don't
     /// match mainnet, or an I/O error occurs.
-    pub fn read_block_at(&mut self, n_file: u32, n_data_pos: u32) -> Result<Vec<u8>, BlkReaderError> {
+    pub fn read_block_at(
+        &mut self,
+        n_file: u32,
+        n_data_pos: u32,
+    ) -> Result<Vec<u8>, BlkReaderError> {
         // CDiskBlockIndex nDataPos = offset of the start of serialized block data.
         // The 8 bytes BEFORE contain: [magic: 4 bytes LE][block_size: 4 bytes LE].
         // Bitcoin Core 28.0+ XOR-encodes the entire file — we decode here.

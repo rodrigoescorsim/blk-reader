@@ -3,7 +3,7 @@
 //! Run with:
 //!   BITCOIN_BLOCKS_DIR=/home/user/.bitcoin/blocks cargo run --example iterate_blocks
 
-use blk_reader::{BlockIterator, BlkReaderConfig};
+use blk_reader::{BlkReaderConfig, BlockIterator};
 use std::path::PathBuf;
 
 fn main() {

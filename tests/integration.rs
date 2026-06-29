@@ -12,7 +12,9 @@ fn blocks_dir() -> std::path::PathBuf {
 #[ignore]
 fn test_xor_decode_genesis_block() {
     let mut reader = BlkReader::new(blocks_dir(), 8 * 1024 * 1024);
-    let data = reader.read_block_at(0, 8).expect("Failed to read genesis block");
+    let data = reader
+        .read_block_at(0, 8)
+        .expect("Failed to read genesis block");
     assert_eq!(data.len(), 285, "Genesis block must be 285 bytes");
 }
 
@@ -21,7 +23,9 @@ fn test_xor_decode_genesis_block() {
 #[ignore]
 fn test_xor_decode_block_4094() {
     let mut reader = BlkReader::new(blocks_dir(), 8 * 1024 * 1024);
-    let data = reader.read_block_at(0, 950778).expect("Failed to read block 4094");
+    let data = reader
+        .read_block_at(0, 950778)
+        .expect("Failed to read block 4094");
     assert!(!data.is_empty());
     assert!(data.len() > 80, "Block must have at least 80 header bytes");
 }

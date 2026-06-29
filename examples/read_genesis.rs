@@ -18,7 +18,10 @@ fn main() {
     match reader.read_block_at(0, 8) {
         Ok(data) => {
             println!("Genesis block: {} bytes", data.len());
-            println!("First 80 bytes (header): {}", hex::encode(&data[..80.min(data.len())]));
+            println!(
+                "First 80 bytes (header): {}",
+                hex::encode(&data[..80.min(data.len())])
+            );
         }
         Err(e) => eprintln!("Error: {e}"),
     }

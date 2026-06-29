@@ -1,6 +1,6 @@
-use std::path::Path;
 use crate::error::BlkReaderError;
 use crate::varint::read_varint;
+use std::path::Path;
 
 /// Represents a CDiskBlockIndex entry from Bitcoin Core.
 #[derive(Debug, Clone)]
@@ -45,18 +45,23 @@ pub struct IndexReader;
 
 impl IndexReader {
     /// Reads all LevelDB index entries from Bitcoin Core in `index_dir`.
-    /// 
+    ///
     /// If opening fails due to a lock (common if Bitcoin Core is running),
     /// attempts to create a temporary copy of index files for reading.
     pub fn read_all(index_dir: &Path) -> Result<Vec<BlockIndexEntry>, BlkReaderError> {
-        use rusty_leveldb::{DB, Options};
+        use rusty_leveldb::{Options, DB};
 
-        let path_str = index_dir.to_str().ok_or_else(|| BlkReaderError::LevelDbOpen {
-            path: index_dir.to_path_buf(),
-            reason: "Path is not valid UTF-8".to_string(),
-        })?;
+        let path_str = index_dir
+            .to_str()
+            .ok_or_else(|| BlkReaderError::LevelDbOpen {
+                path: index_dir.to_path_buf(),
+                reason: "Path is not valid UTF-8".to_string(),
+            })?;
 
-        let options = Options { create_if_missing: false, ..Options::default() };
+        let options = Options {
+            create_if_missing: false,
+            ..Options::default()
+        };
 
         // Try to open the original database
         let db_result = DB::open(path_str, options.clone());
@@ -78,10 +83,14 @@ impl IndexReader {
                     let base_tmp = std::env::var("LOCALAPPDATA")
                         .map(std::path::PathBuf::from)
                         .unwrap_or_else(|_| std::env::temp_dir());
-                    let temp_dir = base_tmp.join("Temp").join(format!("semantiq_index_copy_{}", uuid::Uuid::new_v4()));
-                    std::fs::create_dir_all(&temp_dir).map_err(|io_err| BlkReaderError::LevelDbOpen {
-                        path: temp_dir.clone(),
-                        reason: format!("Failed to create temporary directory: {io_err}"),
+                    let temp_dir = base_tmp
+                        .join("Temp")
+                        .join(format!("semantiq_index_copy_{}", uuid::Uuid::new_v4()));
+                    std::fs::create_dir_all(&temp_dir).map_err(|io_err| {
+                        BlkReaderError::LevelDbOpen {
+                            path: temp_dir.clone(),
+                            reason: format!("Failed to create temporary directory: {io_err}"),
+                        }
                     })?;
 
                     // Copy relevant files (ldb, log, CURRENT, MANIFEST)
@@ -141,21 +150,23 @@ impl IndexReader {
                         }
                         tracing::info!("Shadow copy: synthetic MANIFEST generated successfully");
                     }
-                    
+
                     let temp_path_str = temp_dir.to_str().unwrap();
-                    let temp_db = DB::open(temp_path_str, options).map_err(|e2| BlkReaderError::LevelDbOpen {
-                        path: temp_dir.clone(),
-                        reason: format!("Failed to open temporary LevelDB copy: {e2}"),
+                    let temp_db = DB::open(temp_path_str, options).map_err(|e2| {
+                        BlkReaderError::LevelDbOpen {
+                            path: temp_dir.clone(),
+                            reason: format!("Failed to open temporary LevelDB copy: {e2}"),
+                        }
                     })?;
-                    
+
                     // Schedule cleanup of the temporary directory after reading
                     // Since we don't have a guaranteed destructor here, the ideal is to read and then delete.
                     // We will read everything and clean up at the end of this function.
                     let result = Self::read_from_db(temp_db);
-                    
+
                     // Cleanup
                     let _ = std::fs::remove_dir_all(&temp_dir);
-                    
+
                     return result;
                 } else {
                     return Err(BlkReaderError::LevelDbOpen {
@@ -178,7 +189,10 @@ impl IndexReader {
     /// This function uses `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE` (0x07)
     /// via `OpenOptionsExt::share_mode()`, allowing reading the file even with another
     /// process keeping it open for writing.
-    fn copy_file_shared(src_path: &std::path::Path, dst_path: &std::path::Path) -> std::io::Result<u64> {
+    fn copy_file_shared(
+        src_path: &std::path::Path,
+        dst_path: &std::path::Path,
+    ) -> std::io::Result<u64> {
         #[cfg(target_os = "windows")]
         {
             use std::os::windows::fs::OpenOptionsExt;
@@ -205,7 +219,7 @@ impl IndexReader {
         let mut iter = db.new_iter().map_err(|e| BlkReaderError::IndexParseError {
             reason: format!("Failed to create iterator: {e}"),
         })?;
-        
+
         // Ensure we are at the absolute beginning of the database
         iter.seek_to_first();
 
@@ -243,7 +257,7 @@ impl IndexReader {
                             );
                         }
                         entries.push(entry);
-                    },
+                    }
                     Err(e) => {
                         tracing::warn!(error = %e, "Ignoring invalid index entry");
                     }
@@ -288,7 +302,7 @@ impl IndexReader {
         if status & 0x08 != 0 {
             n_data_pos = read_varint(data, &mut pos)? as u32;
         }
-        
+
         // 3. nUndoPos exists ONLY if status has BLOCK_HAVE_UNDO (0x10)
         if status & 0x10 != 0 {
             let _n_undo_pos = read_varint(data, &mut pos)?;
@@ -315,8 +329,8 @@ impl IndexReader {
     /// - `MANIFEST-000001`: a VersionEdit in LevelDB log record with masked CRC32C
     /// - `CURRENT`: points to `MANIFEST-000001`
     fn write_synthetic_manifest(temp_dir: &std::path::Path) -> std::io::Result<()> {
-        use std::io::Write;
         use crc::{Crc, CRC_32_ISCSI};
+        use std::io::Write;
 
         // Collect .ldb files present in the temporary directory
         let mut ldb_files: Vec<(u64, u64)> = Vec::new(); // (file_number, file_size)
@@ -429,8 +443,12 @@ impl IndexReader {
         loop {
             let byte = (v & 0x7F) as u8;
             v >>= 7;
-            if v == 0 { buf.push(byte); break; }
-            else { buf.push(byte | 0x80); }
+            if v == 0 {
+                buf.push(byte);
+                break;
+            } else {
+                buf.push(byte | 0x80);
+            }
         }
     }
 
@@ -439,8 +457,12 @@ impl IndexReader {
         loop {
             let byte = (v & 0x7F) as u8;
             v >>= 7;
-            if v == 0 { buf.push(byte); break; }
-            else { buf.push(byte | 0x80); }
+            if v == 0 {
+                buf.push(byte);
+                break;
+            } else {
+                buf.push(byte | 0x80);
+            }
         }
     }
 }

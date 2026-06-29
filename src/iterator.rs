@@ -122,7 +122,8 @@ impl Iterator for BlockIterator {
         let entry = &self.sorted_entries[self.cursor];
         self.cursor += 1;
 
-        let result = self.reader
+        let result = self
+            .reader
             .read_block_at(entry.n_file, entry.n_data_pos)
             .map(|data| RawBlock {
                 height: entry.height,
