@@ -1,0 +1,24 @@
+[package]
+name = "blk-reader"
+version = "0.1.0"
+edition = "2021"
+authors = ["Rodrigo Escorsim <rodrigo.escorsim@gmail.com>"]
+license = "MIT"
+description = "Fast reader for Bitcoin Core blk*.dat files with automatic XOR decoding (Bitcoin Core 28.0+)"
+repository = "https://github.com/rodrigoescorsim/blk-reader"
+homepage = "https://github.com/rodrigoescorsim/blk-reader"
+documentation = "https://docs.rs/blk-reader"
+readme = "README.md"
+keywords = ["bitcoin", "blockchain", "blkdat", "bitcoin-core", "parser"]
+categories = ["parsing", "cryptography::cryptocurrencies", "encoding"]
+
+[dependencies]
+thiserror = "1.0"
+tracing = "0.1"
+rusty-leveldb = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+hex = "0.4"
+crc = "3"
+
+[dev-dependencies]
+hex = "0.4"
