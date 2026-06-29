@@ -11,6 +11,8 @@ documentation = "https://docs.rs/blk-reader"
 readme = "README.md"
 keywords = ["bitcoin", "blockchain", "blkdat", "bitcoin-core", "parser"]
 categories = ["parsing", "cryptography::cryptocurrencies", "encoding"]
+rust-version = "1.75"
+exclude = [".github/"]
 
 [dependencies]
 thiserror = "1.0"

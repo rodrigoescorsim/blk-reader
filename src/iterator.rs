@@ -4,12 +4,18 @@ use crate::error::BlkReaderError;
 use crate::index::{BlockIndexEntry, IndexReader};
 use crate::reader::BlkReader;
 
+/// Configuration for [`BlockIterator`].
 #[derive(Debug, Clone)]
 pub struct BlkReaderConfig {
+    /// Path to the `blocks/` directory (e.g. `~/.bitcoin/blocks`).
     pub blocks_dir: PathBuf,
+    /// Path to the `blocks/index/` LevelDB directory.
     pub index_dir: PathBuf,
+    /// First block height to yield (inclusive). Default: `0`.
     pub start_height: u32,
+    /// Last block height to yield (exclusive). Default: `u32::MAX`.
     pub end_height: u32,
+    /// I/O read buffer per open file in bytes. Default: 8 MiB.
     pub read_buffer_bytes: usize,
 }
 
@@ -25,13 +31,43 @@ impl Default for BlkReaderConfig {
     }
 }
 
+/// A raw block returned by [`BlockIterator`].
 #[derive(Debug)]
 pub struct RawBlock {
+    /// Block height in the main chain.
     pub height: u32,
+    /// Block hash in Bitcoin Core internal byte order (little-endian).
+    /// Reverse the bytes before displaying or comparing with block explorers.
     pub hash: [u8; 32],
+    /// Raw serialized block bytes, without the 8-byte `magic + size` prefix.
     pub data: Vec<u8>,
 }
 
+/// Height-ordered iterator over raw Bitcoin blocks.
+///
+/// Reads the LevelDB block index once at construction time, filters and sorts
+/// entries by height, then yields blocks in ascending order via the [`Iterator`]
+/// trait.
+///
+/// # Example
+///
+/// ```no_run
+/// use blk_reader::{BlockIterator, BlkReaderConfig};
+/// use std::path::PathBuf;
+///
+/// let config = BlkReaderConfig {
+///     blocks_dir: PathBuf::from("/home/user/.bitcoin/blocks"),
+///     index_dir:  PathBuf::from("/home/user/.bitcoin/blocks/index"),
+///     start_height: 800_000,
+///     end_height:   800_100,
+///     ..Default::default()
+/// };
+///
+/// for result in BlockIterator::new(config).unwrap() {
+///     let block = result.unwrap();
+///     println!("height={} size={}", block.height, block.data.len());
+/// }
+/// ```
 pub struct BlockIterator {
     sorted_entries: Vec<BlockIndexEntry>,
     cursor: usize,
@@ -39,6 +75,11 @@ pub struct BlockIterator {
 }
 
 impl BlockIterator {
+    /// Opens the LevelDB index and prepares the iterator.
+    ///
+    /// Reads all index entries, filters by `[start_height, end_height)`, and
+    /// sorts them by height. Returns an error if the index directory cannot be
+    /// opened or is corrupt.
     pub fn new(config: BlkReaderConfig) -> Result<Self, BlkReaderError> {
         let all_entries = IndexReader::read_all(&config.index_dir)?;
 

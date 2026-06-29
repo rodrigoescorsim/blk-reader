@@ -1,37 +1,36 @@
-use blk_reader::{BlkReaderConfig, BlockIterator, BlkReader};
+use blk_reader::{BlkReader, BlkReaderConfig, BlockIterator};
 
-/// Tests direct reading of blk00000.dat with XOR decoding (Bitcoin Core 28.0+).
-/// Validates: correct magic bytes after decode, reasonable genesis block size (285 bytes).
+fn blocks_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(
+        std::env::var("BITCOIN_BLOCKS_DIR")
+            .expect("Set BITCOIN_BLOCKS_DIR to your Bitcoin Core blocks/ directory"),
+    )
+}
+
+/// Reads the genesis block directly and verifies size (285 bytes) and XOR decoding.
 #[test]
 #[ignore]
 fn test_xor_decode_genesis_block() {
-    let blocks_dir = std::path::PathBuf::from("D:/Bitcoin/blocks");
-    let mut reader = BlkReader::new(blocks_dir, 8 * 1024 * 1024);
-    // Genesis block: n_file=0, n_data_pos=8 (magic at offset 0, size at offset 4)
+    let mut reader = BlkReader::new(blocks_dir(), 8 * 1024 * 1024);
     let data = reader.read_block_at(0, 8).expect("Failed to read genesis block");
     assert_eq!(data.len(), 285, "Genesis block must be 285 bytes");
 }
 
-/// Tests block reading at height 4094 (the first one that failed with invalid magic bytes).
+/// Reads block 4094 — the first block that triggered XOR magic-byte failures before the fix.
 #[test]
 #[ignore]
 fn test_xor_decode_block_4094() {
-    let blocks_dir = std::path::PathBuf::from("D:/Bitcoin/blocks");
-    let mut reader = BlkReader::new(blocks_dir, 8 * 1024 * 1024);
-    // n_data_pos=950778 for height=4094 according to LevelDB index
+    let mut reader = BlkReader::new(blocks_dir(), 8 * 1024 * 1024);
     let data = reader.read_block_at(0, 950778).expect("Failed to read block 4094");
-    assert!(!data.is_empty(), "Block 4094 must have data");
-    // 2009 block has at least 80 header bytes + 1 coinbase tx
-    assert!(data.len() > 80, "Block 4094 must have more than 80 bytes");
+    assert!(!data.is_empty());
+    assert!(data.len() > 80, "Block must have at least 80 header bytes");
 }
 
+/// Iterates the first 10 blocks and checks order, hash, and non-empty data.
 #[test]
 #[ignore]
 fn test_read_first_10_blocks() {
-    let blocks_dir = std::path::PathBuf::from(
-        std::env::var("BITCOIN_BLOCKS_DIR")
-            .expect("BITCOIN_BLOCKS_DIR must point to ~/.bitcoin/blocks/"),
-    );
+    let blocks_dir = blocks_dir();
     let index_dir = blocks_dir.join("index");
 
     let iter = BlockIterator::new(BlkReaderConfig {

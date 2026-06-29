@@ -5,6 +5,12 @@ use std::path::PathBuf;
 
 use crate::error::BlkReaderError;
 
+/// Low-level reader for Bitcoin Core `blk*.dat` files.
+///
+/// Manages a pool of up to 8 open file handles (LRU eviction) and applies
+/// XOR decoding automatically when `blocks/xor.dat` is present.
+///
+/// For height-ordered iteration prefer [`BlockIterator`](crate::BlockIterator).
 pub struct BlkReader {
     blocks_dir: PathBuf,
     buffer_size: usize,
@@ -20,6 +26,11 @@ const MAX_OPEN_FILES: usize = 8;
 const MAINNET_MAGIC: u32 = 0xD9B4BEF9;
 
 impl BlkReader {
+    /// Creates a new reader for the given `blocks/` directory.
+    ///
+    /// `buffer_size` is the I/O read buffer per open file in bytes.
+    /// A value of `8 * 1024 * 1024` (8 MiB) works well for sequential reads.
+    /// XOR key detection from `xor.dat` happens here at construction time.
     pub fn new(blocks_dir: PathBuf, buffer_size: usize) -> Self {
         // Auto-detect XOR key from blocks/xor.dat (Bitcoin Core 28.0+).
         // Older nodes do not have this file — in this case xor_key_len=0 (no XOR).
@@ -55,6 +66,20 @@ impl BlkReader {
         }
     }
 
+    /// Reads the raw serialized block at a given file index and byte offset.
+    ///
+    /// `n_file` corresponds to `blk{n_file:05}.dat` (e.g. `0` → `blk00000.dat`).
+    /// `n_data_pos` is the offset of the block data as stored in the LevelDB index
+    /// (`CDiskBlockIndex::nDataPos`). The 8 bytes immediately before it contain the
+    /// network magic and block size.
+    ///
+    /// Returns the raw block bytes without any header prefix. Pass the result to
+    /// `bitcoin::consensus::deserialize` or similar to decode transactions.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BlkReaderError`] if the file is missing, the magic bytes don't
+    /// match mainnet, or an I/O error occurs.
     pub fn read_block_at(&mut self, n_file: u32, n_data_pos: u32) -> Result<Vec<u8>, BlkReaderError> {
         // CDiskBlockIndex nDataPos = offset of the start of serialized block data.
         // The 8 bytes BEFORE contain: [magic: 4 bytes LE][block_size: 4 bytes LE].
@@ -99,7 +124,7 @@ impl BlkReader {
             tracing::error!(
                 file = n_file,
                 offset = n_data_pos,
-                hex = %hex::encode(&diag_buf),
+                hex = %hex::encode(diag_buf),
                 "ERROR: Magic bytes not found. Content at original offset above."
             );
             return Err(BlkReaderError::InvalidMagicBytes {

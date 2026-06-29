@@ -11,7 +11,7 @@ pub struct BlockIndexEntry {
     pub height: u32,
     /// Bitcoin Core status field:
     /// - bits 0–2: validity level (0=unknown, 1=header, 2=tree, 3=transactions,
-    ///             4=chain/BLOCK_VALID_CHAIN, 5=scripts/BLOCK_VALID_SCRIPTS)
+    ///   4=chain/BLOCK_VALID_CHAIN, 5=scripts/BLOCK_VALID_SCRIPTS)
     /// - bit 3 (0x08): BLOCK_HAVE_DATA — block data is in blk*.dat
     /// - bit 4 (0x10): BLOCK_HAVE_UNDO — undo data is in rev*.dat
     pub status: u32,
@@ -56,8 +56,7 @@ impl IndexReader {
             reason: "Path is not valid UTF-8".to_string(),
         })?;
 
-        let mut options = Options::default();
-        options.create_if_missing = false;
+        let options = Options { create_if_missing: false, ..Options::default() };
 
         // Try to open the original database
         let db_result = DB::open(path_str, options.clone());
@@ -402,7 +401,7 @@ impl IndexReader {
         digest.update(&edit);
         let raw_crc = digest.finalize();
         // LevelDB masking: rotate right 15 bits + add constant
-        let masked_crc = ((raw_crc >> 15) | (raw_crc << 17)).wrapping_add(0xa282ead8u32);
+        let masked_crc = raw_crc.rotate_right(15).wrapping_add(0xa282ead8u32);
 
         let manifest_path = temp_dir.join("MANIFEST-000001");
         let mut f = std::fs::File::create(&manifest_path)?;
