@@ -118,4 +118,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Author
 
-[Rodrigo Escorsim](https://github.com/rodrigoescorsim) · [cachesnap.com](https://cachesnap.com)
+[Rodrigo Escorsim](https://github.com/rodrigoescorsim) · [LinkedIn](https://linkedin.com/in/rodrigoescorsim)
